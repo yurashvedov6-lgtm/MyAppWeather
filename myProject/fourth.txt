@@ -1,0 +1,127 @@
+package com.example.myappf
+
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+
+
+// 1. КЛАСС ЗАПУСКА ПРИЛОЖЕНИЯ (Связывает код с эмулятором)
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // Здесь мы даем команду эмулятору показать ваш экран
+                    MainScreen()
+                }
+            }
+        }
+    }
+}
+
+// 2. ВАШ РАБОЧИЙ ЭКРАН (Оставили без изменений, добавили только логику цифровой клавиатуры)
+@Composable
+fun MainScreen() {
+    val inputTextState = rememberSaveable { mutableStateOf("") }
+    val resultTextState = rememberSaveable { mutableStateOf("Результат: ") }
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        OutlinedTextField(
+            value = inputTextState.value,
+            onValueChange = { inputTextState.value = it },
+            label = { Text("Введите диаметр(в мм) ") },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()//поле на всю ширину
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = resultTextState.value)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier =Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)//сделаем отступ между кн
+        )
+        {
+            Button(
+                onClick = {
+                    //1.считываем диаметр как дробное число
+                    val diameter = inputTextState.value.toDoubleOrNull()
+
+                    if (diameter != null && diameter > 0) {
+                        //2.считаем площадь по формуле (p*d^2) /2
+                        val area = (3.141592 * diameter * diameter) / 4
+                        //3. конструкция try{...} catch (e:Exception){...}
+                        val formattedArea = try {
+                            String.format(
+                                java.util.Locale.US, "%.2f", area
+                            )
+                        } catch (e: Exception) {
+                            area.toString()
+                        }
+                        resultTextState.value = "Площадь сечения: $formattedArea мм2"
+                    } else {
+                        resultTextState.value = "Ошибка: введите корректный диаметр !"
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Blue,
+                    contentColor = Color.Yellow
+                )
+            ) {
+                Text(" Вычислить S ")
+            }
+            Button(
+               onClick = {
+                   inputTextState.value = ""//очищаем поле ввода
+                   resultTextState.value = ""//очищаем поле текста
+               },
+                   modifier = Modifier.weight(1f),
+                   shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Gray,//фон кнопки серый
+                    contentColor = Color.Yellow
+                )
+            )
+            {
+               Text(text = "Очистить S")
+            }
+        }
+    }
+}
+
+// 3. ВАШЕ ПРЕВЬЮ
+@Preview(showBackground = true)
+@Composable
+fun MainScreenPreview() {
+    MainScreen()
+}
+//Это программа диаметр здесь сечение высчитывается по диаметру

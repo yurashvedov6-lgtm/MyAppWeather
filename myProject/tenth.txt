@@ -1,0 +1,179 @@
+package com.example.myappf
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+// 1. Расширяем структуру. Теперь каждый пункт меню "знает" свою картинку и свой текст.
+enum class AppScreen(val imageResId: Int, val description: String) {
+    Menu(0, ""), // Для главного меню эти данные не нужны
+
+    Submodule15(
+        imageResId = R.drawable.tabel,
+        description = "Это таблица субмодуля 15 пин управления СА ресанта:\n" +
+                "1) 15-пин это +15в питание платы с Дежурного БП;\n" +
+                "2) 3-пин сигнал ШИМ;\n" +
+                "3) 7-пин это земля;\n" +
+                "4) 8-пин protekt подает сигнал блокировки ШИМ."
+    ),
+
+    Submodule9(
+        // ТУТ ЗАМЕНИТЕ R.drawable.tabel НА ИМЯ ВАШЕЙ ВТОРОЙ КАРТИНКИ, КОГДА ДОБАВИТЕ ЕЁ В DRAWABLE
+        imageResId = R.drawable.table0,
+        description = "Это принципиальная схема ПУ  Ресанта:\n" +
+                " Схема состоит из двух МС ;\n" +
+                "1)Первая МС uc3845BD1R2 ШИМ контроллер;\n" +
+                "2) Вторая МС  MC33074D ОУ  ."
+    ),
+    Submodule10(
+       imageResId = R.drawable.table1,
+        description = "Это пункты которые нужно изменить при настройке " +
+                "частотника SPK753B43P"
+    )
+}
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContent {
+            // Начинаем с экрана Menu
+            var currentScreen by remember { mutableStateOf(AppScreen.Menu) }
+
+            when (currentScreen) {
+                AppScreen.Menu -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Ремотн СА Ресанта 15пин",
+                            fontSize = 28.sp,
+                            color = Color.Blue,
+                            modifier = Modifier.padding(bottom = 32.dp)
+                        )
+
+                        // ПЕРВАЯ КНОПКА (Субмодуль 15)
+                        Button(
+                            onClick = { currentScreen = AppScreen.Submodule15 },
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        ) {
+                            Text(text = "Открыть: Таблица напряжений на выводах ПУ 15 пин", fontSize = 18.sp)
+                        }
+
+                        // ВТОРАЯ КНОПКА (Субмодуль 9)
+                        Button(
+                            onClick = { currentScreen = AppScreen.Submodule9 },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Yellow,
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Text(text = "Открыть: Схема ПУ 15пин", fontSize = 18.sp)
+                        }
+                        //Третья кнопка spk753
+                        Button(
+                            onClick = {currentScreen = AppScreen.Submodule10},
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Magenta,
+                                contentColor = Color.Cyan
+                            )
+                        ) {
+                            Text(text = "SPK753", fontSize = 18.sp)
+                        }
+                    }
+                }
+                // Если выбран любой другой экран (Submodule15 или Submodule9)
+                else -> {
+                    var scale by remember { mutableFloatStateOf(1f) }
+                    var offset by remember { mutableStateOf(Offset.Zero) }
+
+                    val state = rememberTransformableState { zoomChange, offsetChange, _ ->
+                        scale = (scale * zoomChange).coerceIn(1f, 5f)
+                        offset += offsetChange
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Button(
+                            onClick = { currentScreen = AppScreen.Menu },
+                            modifier = Modifier.align(Alignment.Start)
+                        ) {
+                            Text(text = "Назад")
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Просмотр картинки",
+                            fontSize = 24.sp,
+                            color = Color.Black
+                        )
+
+                        // Картинка подставляется автоматически в зависимости от выбранного экрана
+                        Image(
+                            painter = painterResource(id = currentScreen.imageResId),
+                            contentDescription = "Схема",
+                            modifier = Modifier
+                                .padding(top = 16.dp)
+                                .size(350.dp)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationX = offset.x
+                                    translationY = offset.y
+                                }
+                                .transformable(state = state)
+                        )
+
+                        // Текст тоже подставляется автоматически
+                        Text(
+                            text = currentScreen.description,
+                            fontSize = 16.sp,
+                            color = Color.DarkGray,
+                            modifier = Modifier.padding(top = 24.dp, start = 8.dp, end = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+// этот код таже кортинка что и в прежниих txt файлах но с тремя кнопками здесь
+//код уже поменялся добавился класс enum class AppScreen
+//  куда вставляем пункт где находится кортинка
+// и появляется фу When куда устанавливаем кнопки
+//просто капируем текст вышестоящий и добовляем свой текст
