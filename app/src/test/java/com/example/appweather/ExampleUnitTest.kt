@@ -1,4 +1,4 @@
-package com.example.myappf
+package com.example.appweather
 
 import org.junit.Test
 
