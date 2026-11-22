@@ -22,7 +22,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Точка входа: запускаем наш экран
             SimpleMainThreadBrick()
         }
     }
@@ -30,36 +29,41 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SimpleMainThreadBrick() {
-    // 1. Переменная состояния живет в главном потоке
-    var counter by remember { mutableStateOf(0) }
-    val threadName = Thread.currentThread().name // Вернет "main"
+
+    var bgThreadName by remember { mutableStateOf("Пока не создан") }
+
 
     Column(modifier = Modifier.padding(top = 48.dp, start = 16.dp, end = 16.dp)) {
-        Text(text = "Счетчик: $counter")
-        Text(text = "Работаем в потоке: $threadName")
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = "Фоновый поток: $bgThreadName")
 
-        // 2. Нажатие кнопки тоже срабатывает мгновенно в главном потоке
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         Button(
             onClick = {
-                counter++ // Обычное синхронное действие: изменили число -> экран перерисовался
+
+
+                val myThread = Thread {
+                    val name = Thread.currentThread().name // это строка запращив имя
+
+                    Thread.sleep(2000)
+                    bgThreadName = name
+
+                }
+                myThread.start()
             }
         ) {
-            Text("Нажать (+1)")
+            Text("Создать Thread вручную")
         }
     }
 }
 /*
-                    //================ в этом коде начал изучать ООП ====================//
-                     Обяснение перем threadName c точки ООП.
-                     так как здесь на самом деле нет наследования в самой записи,
-                     но есть работа с классом,
-                      статическим методом, объектом (экземпляром) и свойством.
-                      В этом коде запустил самый простой главный поток main ив строке
-                      val threadName = Thread.currentThread().name // Вернет "main"
-                      с помощью главного класса потока и его статистического метода currentThread
-                и поля name посмотрел как он называется и в нем (Thread ) потоке крутится мой
-                код кнопки.
-
+                                Создаем фоновый поток в ручную
+       1.с помощью переменной myThread {} поместили его в действие onClick
+       2.bgThreadName эта переменная в нее записали "пока не создан поток "
+       затем ее поместили сверху в элемент Text
+       3. После задержки Thread.sleep(millis=2000)
+       4.Затем ей присвоили переменную name в самом потоке .
+       5.При нажатии кнопки создаются поочереди параллельные потоки
 */
