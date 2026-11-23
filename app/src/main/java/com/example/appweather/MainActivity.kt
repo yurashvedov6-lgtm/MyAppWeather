@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import java.net.URL
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,25 +46,28 @@ fun SimpleMainThreadBrick() {
 
 
                 val myThread = Thread {
-                    val name = Thread.currentThread().name // это строка запращив имя
+                    try {//строхуемся от от ошибок при запросе
+                        /* Стандартный URL(...).readText() умеет делать только простой GET-запрос  */
+                        val response = URL("https://google.com").readText().take(200)
 
-                    Thread.sleep(2000)
-                    bgThreadName = name
+                        bgThreadName = response //передал запрос в переменную состояния
+
+                    }catch (e: Exception){
+                        //показывает если при запрое пошло чтото не так и передает в перем сост
+                        bgThreadName = "Ошибка: ${e.javaClass.simpleName} — ${e.message}"
+                    }
+
 
                 }
                 myThread.start()
             }
         ) {
-            Text("Создать Thread вручную")
+            Text("Запрос url")
         }
     }
 }
 /*
                                 Создаем фоновый поток в ручную
        1.с помощью переменной myThread {} поместили его в действие onClick
-       2.bgThreadName эта переменная в нее записали "пока не создан поток "
-       затем ее поместили сверху в элемент Text
-       3. После задержки Thread.sleep(millis=2000)
-       4.Затем ей присвоили переменную name в самом потоке .
-       5.При нажатии кнопки создаются поочереди параллельные потоки
+
 */
