@@ -31,12 +31,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SimpleMainThreadBrick() {
 
-    var bgThreadName by remember { mutableStateOf("Пока не создан") }
+    var bgThreadName by remember { mutableStateOf("запроса на  httpbin.org не создан") }
 
 
     Column(modifier = Modifier.padding(top = 48.dp, start = 16.dp, end = 16.dp)) {
 
-        Text(text = "Фоновый поток: $bgThreadName")
+        Text(text =  bgThreadName)
 
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -48,11 +48,11 @@ fun SimpleMainThreadBrick() {
                 val myThread = Thread {
                     try {//строхуемся от от ошибок при запросе
                         /* Стандартный URL(...).readText() умеет делать только простой GET-запрос  */
-                        val response = URL("https://google.com").readText().take(200)
+                        val response = fetchGet()
 
-                        bgThreadName = response //передал запрос в переменную состояния
+                        bgThreadName = "вот ответ с httpbin:\n$response" //передал запрос в переменную состояния
 
-                    }catch (e: Exception){
+                    } catch (e: Exception) {
                         //показывает если при запрое пошло чтото не так и передает в перем сост
                         bgThreadName = "Ошибка: ${e.javaClass.simpleName} — ${e.message}"
                     }
@@ -64,10 +64,16 @@ fun SimpleMainThreadBrick() {
         ) {
             Text("Запрос url")
         }
+
     }
 }
+
+fun fetchGet(): String = URL("https://httpbin.org/get").readText()
 /*
                                 Создаем фоновый поток в ручную
-       1.с помощью переменной myThread {} поместили его в действие onClick
+       но в него вставляем фу fetchGet()которая просто запрашивает данные с сервера
+       в переменную записываю название запрос не создан и ее вставляю в текст
+       с присвоением результата фу в эту переменную записываю  вот ответ присылает
+       чистый json
 
 */
