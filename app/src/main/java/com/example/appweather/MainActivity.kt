@@ -54,9 +54,11 @@ fun SimpleMainThreadBrick() {
                 scope.launch {
                     try {//строхуемся от от ошибок при запросе
                         //3.Уводим фу fetchPut  в сетевой поток Dispedchers.IO
-                        val response = withContext(Dispatchers.IO) { fetchPut() }
+                        // Данные, которые отправляем на сервер (в формате JSON)
+                        val jsonData = """{"city": "Moscow", "temp": 22}"""
+                        val response = withContext(Dispatchers.IO) { fetchPOST(jsonData) }
 
-                        bgThreadName = "отправка PUT и возвр с сервера  httpbin.org:\n$response"
+                        bgThreadName = "отправка POST и возвр с сервера  httpbin.org:\n$response"
 
                     } catch (e: Exception) {
                         //показывает если при запрое пошло чтото не так и передает в перем сост
@@ -74,16 +76,37 @@ fun SimpleMainThreadBrick() {
 }
 
 
-fun fetchPut(): String = (URL("https://httpbin.org/put").openConnection() as HttpURLConnection)
+//fun fetchPut(): String = (URL("https://httpbin.org/post").openConnection() as HttpURLConnection)
 
 
-    .apply { requestMethod = "PUT" }
+    //.apply { requestMethod = "POST" }//обрабатываем пустой post connection
 
-    .inputStream.bufferedReader().readText()
+    //.inputStream.bufferedReader().readText()//читаем ответ сервера
 
+fun fetchPOST(jsonBody: String): String{
+    val connection = URL("https://httpbin.org/post").openConnection() as HttpURLConnection
+    connection.apply {
+        requestMethod = "POST"
+        doOutput = true //1.разрешаем отправку тела запроса
+        // 2. Говорим серверу, что шлём JSON
+        setRequestProperty("Content-Type","application/json; charset = UTF-8")
+    }
+    //3.Записываем данные в поток отправки
+    connection.outputStream.use { os ->
+        os.write(jsonBody.toByteArray(Charsets.UTF_8))
+    }
+    // 4. Читаем ответ сервера (httpbin вернёт ваши данные в поле "json" и "data")
+    return connection.inputStream.bufferedReader().readText()
+}
 /*
-                                Создаем фоновый поток c помощью корутины
-1.rememberCoroutineScope() — создаёт область запуска корутин, привязанную к вашему экрану.
-2.withContext(Dispatchers.IO) — переключает выполнение вашей функции fetchPost()
-в специальный фоновый пул потоков для сети и файлов (IO = Input/Output).
+            Теперь в этом коде мы пытаемся сделате не пустой request POST а его заполнить.
+
+я закоментировал две строчки оно тоже самое будет но чучуть по другому что мы добавляем в заполнен
+ном POST
+        /============================================================================/
+        Чтобы отправить данные в POST-запросе через стандартный HttpURLConnection, нужно:
+1. Изменить адрес на https://httpbin.org и метод на "POST".
+2. Включить передачу данных (doOutput = true).
+3. Указать заголовок формата данных (обычно JSON: Content-Type: application/json).
+4. Записать строку с данными в outputStream перед чтением ответа.
 */
