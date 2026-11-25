@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -53,12 +54,22 @@ fun SimpleMainThreadBrick() {
                 // 2.запускаем легкую корутину вместо тяжелого Thread()
                 scope.launch {
                     try {//строхуемся от от ошибок при запросе
-                        //3.Уводим фу fetchPut  в сетевой поток Dispedchers.IO
-                        // Данные, которые отправляем на сервер (в формате JSON)
-                        val jsonData = """{"city": "Moscow", "temp": 22}"""
-                        val response = withContext(Dispatchers.IO) { fetchPOST(jsonData) }
 
-                        bgThreadName = "отправка POST и возвр с сервера  httpbin.org:\n$response"
+                        //1.Получаем сырую строку с вервера в фоновом потоке
+                        val rowJson = withContext(Dispatchers.IO) { fetchGet() }
+                //2.ПАРСИНГ:превращаем сырую строку в JSONObject и достаем нужные поля
+                        val jsonObject = JSONObject(rowJson)
+                        val  myIp =jsonObject.getString("origin")//достаем ip
+                        val  requestUrl = jsonObject.getString("url")// достаем url
+                        //достаем из вложнного поля "headers" ->"Host"
+                        val headersObject = jsonObject.getJSONObject("headers")
+                        val host =headersObject.getString("Host")
+
+                        //отправка в Text
+                        bgThreadName = "Результат парсинга:\n" +
+                                "Ваш IP (origin): $myIp\n" +
+                                "Адрес (url): $requestUrl\n" +
+                                "Хост (из headers): $host"
 
                     } catch (e: Exception) {
                         //показывает если при запрое пошло чтото не так и передает в перем сост
@@ -79,34 +90,37 @@ fun SimpleMainThreadBrick() {
 //fun fetchPut(): String = (URL("https://httpbin.org/post").openConnection() as HttpURLConnection)
 
 
-    //.apply { requestMethod = "POST" }//обрабатываем пустой post connection
+//.apply { requestMethod = "POST" }//обрабатываем пустой post connection
 
-    //.inputStream.bufferedReader().readText()//читаем ответ сервера
+//.inputStream.bufferedReader().readText()//читаем ответ сервера
 
-fun fetchPOST(jsonBody: String): String{
-    val connection = URL("https://httpbin.org/post").openConnection() as HttpURLConnection
-    connection.apply {
+fun fetchGet(): String {
+    val connection = URL("https://httpbin.org/get ").openConnection() as HttpURLConnection
+    /*connection.apply {
         requestMethod = "POST"
         doOutput = true //1.разрешаем отправку тела запроса
         // 2. Говорим серверу, что шлём JSON
         setRequestProperty("Content-Type","application/json; charset = UTF-8")
     }
+    */
+    /*
     //3.Записываем данные в поток отправки
     connection.outputStream.use { os ->
         os.write(jsonBody.toByteArray(Charsets.UTF_8))
     }
+    */
+    connection.requestMethod = "GET"
     // 4. Читаем ответ сервера (httpbin вернёт ваши данные в поле "json" и "data")
     return connection.inputStream.bufferedReader().readText()
 }
 /*
-            Теперь в этом коде мы пытаемся сделате не пустой request POST а его заполнить.
+            Теперь в этом коде мы делаем запрос GET но не чистый json фармат а делаем парсинг.
 
-я закоментировал две строчки оно тоже самое будет но чучуть по другому что мы добавляем в заполнен
-ном POST
+           ЗАКОМЕНТИРОВАЛ СТРОКИ В МЕТОДЕ POST
         /============================================================================/
-        Чтобы отправить данные в POST-запросе через стандартный HttpURLConnection, нужно:
-1. Изменить адрес на https://httpbin.org и метод на "POST".
-2. Включить передачу данных (doOutput = true).
-3. Указать заголовок формата данных (обычно JSON: Content-Type: application/json).
-4. Записать строку с данными в outputStream перед чтением ответа.
+        Чтобы получить данные method GET  запросе через стандартный HttpURLConnection И затем
+        сделать ПАРСИНГ ДЛЯ ЭТОГО ЕСТЬ СПЕЦИАЛЬНЫЙ КЛАСС ВСТРОЕННЫЙ В АНДРОИД JSONObject берем
+        строку из фонового потока создаем объект в виде переменной и делаем обект уже этого класа
+        JSONObject   с помощью такой команды  val jsonObject = JSONObject(rowJson) и к этому обекту
+        приципляем свойства класса через точку и выводим поля которые нам нужны из json формата
 */
