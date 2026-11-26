@@ -28,103 +28,71 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            SimpleMainThreadBrick()
+            WeatherScreen()
         }
     }
 }
 
 @Composable
-fun SimpleMainThreadBrick() {
-    var resultText by remember { mutableStateOf("Выберите действие: POST или GET") }
-    val scope = rememberCoroutineScope()
+fun WeatherScreen() {
+    var weatherText by remember { mutableStateOf("Нажмите кнопку, чтобы узнать погоду в Симферополе") }
+    val scope = rememberCoroutineScope() // 1. Создаём менеджер корутин для экрана
 
     Column(modifier = Modifier.padding(top = 48.dp, start = 16.dp, end = 16.dp)) {
 
-        Text(text = resultText)
+        Text(text = weatherText)
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // КНОПКА 1: Отправляем данные на сервер (POST) и парсим ответ
         Button(
             onClick = {
+                // 2. Запускаем корутину
                 scope.launch {
+                    weatherText = "Загружаем погоду..."
                     try {
-                        val jsonToSend = """{"city": "Simferopol", "temp": 18}"""
-                        //уводим фу fetchPost в сетевой поток Dispatchers.IO
-                        val rawJson = withContext(Dispatchers.IO) { fetchPost(jsonToSend) }
-
-                        // Парсим ответ сервера (он вернёт наши данные + присвоенный id)
-                        val jsonObject = JSONObject(rawJson)
-                        val id = jsonObject.getInt("id")
-                        val city = jsonObject.getString("city")
-                        val temp = jsonObject.getInt("temp")
-
-                        resultText = "POST успешен! Сервер принял:\n" +
-                                "ID записи: $id\n" +
-                                "Город: $city\n" +
-                                "Температура: $temp°C"
-                    } catch (e: Exception) {
-                        resultText = "Ошибка POST: ${e.javaClass.simpleName} — ${e.message}"
-                    }
-                }
-            }
-        ) {
-            Text("1. Отправить данные (POST)")
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // КНОПКА 2: Забираем готовые данные с этого же сервера (GET)
-        Button(
-            onClick = {
-                scope.launch {
-                    try {
+                        // 3. Делаем GET-запрос в фоновом потоке Dispatchers.IO
                         val rawJson = withContext(Dispatchers.IO) { fetchGet() }
 
-                        // Парсим полученную с сервера запись №1
-                        val jsonObject = JSONObject(rawJson)
-                        val userId = jsonObject.getInt("userId")
-                        val title = jsonObject.getString("title")
+                        // 4. ПАРСИНГ ответа Open-Meteo
+                        val jsonObject = JSONObject(rawJson)//забираем пришедший json
 
-                        resultText = "GET успешен! Получено с сервера:\n" +
-                                "User ID: $userId\n" +
-                                "Заголовок: $title"
+                        // Открываем вложенный объект "current_weather"
+                        val currentWeather = jsonObject.getJSONObject("current_weather")
+
+                        // Достаём конкретные поля (числа через getDouble, строки через getString)
+                        val temp = currentWeather.getDouble("temperature")
+                        val windSpeed = currentWeather.getDouble("windspeed")
+                        val time = currentWeather.getString("time")
+
+                        weatherText = "Погода в Симферополе:\n" +
+                                "Температура: $temp °C\n" +
+                                "Скорость ветра: $windSpeed км/ч\n" +
+                                "Время обновления (UTC): $time"
+
                     } catch (e: Exception) {
-                        resultText = "Ошибка GET: ${e.javaClass.simpleName} — ${e.message}"
+                        weatherText = "Ошибка: ${e.javaClass.simpleName} — ${e.message}"
                     }
                 }
             }
         ) {
-            Text("2. Получить данные (GET)")
+            Text("Узнать погоду")
         }
     }
-}
-
-fun fetchPost(jsonBody: String): String {
-    val connection = URL("https://jsonplaceholder.typicode.com/posts").openConnection() as HttpURLConnection
-    connection.apply {
-        requestMethod = "POST"
-        doOutput = true
-        setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-    }
-    connection.outputStream.use { os ->
-        os.write(jsonBody.toByteArray(Charsets.UTF_8))
-    }
-    return connection.inputStream.bufferedReader().readText()
 }
 
 fun fetchGet(): String {
-    val connection = URL("https://jsonplaceholder.typicode.com/posts/1").openConnection() as HttpURLConnection
-    connection.requestMethod = "GET"// обрабатываем запрос и отправляем
-    return connection.inputStream.bufferedReader().readText()// получаем ответ
+    val host = "https://api.open-meteo.com"
+    val path = "/v1/forecast"
+    val params = "?latitude=44.9572&longitude=34.1108&current_weather=true"
+
+    val apiUrl = host + path + params
+
+    val connection = URL(apiUrl).openConnection() as HttpURLConnection
+    connection.requestMethod = "GET"
+    return connection.inputStream.bufferedReader().readText()
 }
+
 /*
-                     Сдесь тот же код что и два перед этим кода тоесть один запрос POST
-       Другой GET также сделали через клас URL() и две фу fetcPost() и fetchGet()
-       перед этим коммитом два одинаковых таких только по отдельности а сдесь сделали две кнопки с
-       двумя одну переменную для корутины scope через которую запускали в двух кнопках (button)через
-    метод scopeLaunch{}   И МЕТОД СЕТЕВОЙ ПОТОК withContext(Despedcher.IO)  тоесть фоновый и в нем
-    запускаем запросы к серверу парсим их тоесь пишем поля который нам нужны в запросе  это сервер
-    typecode.come он отправляет сразу ответ post какие данные я отправил а get запрос только
-    выдает id этого запроса это учебный сервер
-*/
+сдесь код тот же самый как и в предыдущих get только запрос GET
+ делается уже на сервер Open-Meteo
+ */
