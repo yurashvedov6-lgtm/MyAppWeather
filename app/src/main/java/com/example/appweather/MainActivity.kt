@@ -5,8 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,55 +38,63 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun WeatherScreen() {
-    var weatherText by remember { mutableStateOf("Нажмите кнопку, чтобы узнать погоду в Симферополе") }
-    val scope = rememberCoroutineScope() // 1. Создаём менеджер корутин для экрана
+    var weatherText by remember { mutableStateOf("Выберите город из списка ниже:") }
+    val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.padding(top = 48.dp, start = 16.dp, end = 16.dp)) {
 
+        // Блок с результатом погоды
         Text(text = weatherText)
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = {
-                // 2. Запускаем корутину
-                scope.launch {
-                    weatherText = "Загружаем погоду..."
-                    try {
-                        // 3. Делаем GET-запрос в фоновом потоке Dispatchers.IO
-                        val rawJson = withContext(Dispatchers.IO) { fetchGet() }
+        // Прокручиваемый список кнопок для каждого города из CrimeaCities.kt
+        LazyColumn {
+            items(crimeaCities) { city ->
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    onClick = {
+                        scope.launch {
+                            weatherText = "Загружаем погоду: ${city.name}..."
+                            try {
+                                // Передаём выбранный объект city в fetchGet
+                                val rawJson = withContext(Dispatchers.IO) { fetchGet(city) }
 
-                        // 4. ПАРСИНГ ответа Open-Meteo
-                        val jsonObject = JSONObject(rawJson)//забираем пришедший json
+                                val jsonObject = JSONObject(rawJson)
+                                val current = jsonObject.getJSONObject("current")
 
-                        // Открываем вложенный объект "current_weather"
-                        val currentWeather = jsonObject.getJSONObject("current_weather")
+                                val temp = current.getDouble("temperature_2m")
+                                val windSpeed = current.getDouble("wind_speed_10m")
+                                val precipitation = current.getDouble("precipitation")
+                                val time = current.getString("time")
 
-                        // Достаём конкретные поля (числа через getDouble, строки через getString)
-                        val temp = currentWeather.getDouble("temperature")
-                        val windSpeed = currentWeather.getDouble("windspeed")
-                        val time = currentWeather.getString("time")
+                                weatherText = "Погода (${city.name}):\n" +
+                                        "Температура: $temp °C\n" +
+                                        "Скорость ветра: $windSpeed км/ч\n" +
+                                        "Осадки: $precipitation мм\n" +
+                                        "Время обновления (UTC): $time"
 
-                        weatherText = "Погода в Симферополе:\n" +
-                                "Температура: $temp °C\n" +
-                                "Скорость ветра: $windSpeed км/ч\n" +
-                                "Время обновления (UTC): $time"
-
-                    } catch (e: Exception) {
-                        weatherText = "Ошибка: ${e.javaClass.simpleName} — ${e.message}"
+                            } catch (e: Exception) {
+                                weatherText = "Ошибка: ${e.javaClass.simpleName} — ${e.message}"
+                            }
+                        }
                     }
+                ) {
+                    Text(text = city.name)
                 }
             }
-        ) {
-            Text("Узнать погоду")
         }
     }
 }
 
-fun fetchGet(): String {
-    val host = "https://api.open-meteo.com"
+// Теперь функция принимает объект City и сама подставляет его координаты
+fun fetchGet(city: City): String {
+    // Добавьте "api." перед open-meteo:
+    val host = "https://" + "api." + "open-meteo.com"
     val path = "/v1/forecast"
-    val params = "?latitude=44.9572&longitude=34.1108&current_weather=true"
+    val params = "?latitude=${city.latitude}&longitude=${city.longitude}&current=temperature_2m,wind_speed_10m,precipitation"
 
     val apiUrl = host + path + params
 
@@ -93,6 +104,5 @@ fun fetchGet(): String {
 }
 
 /*
-сдесь код тот же самый как и в предыдущих get только запрос GET
- делается уже на сервер Open-Meteo
- */
+в том файле я подключаю класс city из второго созданного файла
+*/
